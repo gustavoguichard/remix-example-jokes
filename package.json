@@ -16,7 +16,9 @@
     "@remix-run/serve": "1.3.5",
     "bcryptjs": "^2.4.3",
     "react": "^17.0.2",
-    "react-dom": "^17.0.2"
+    "react-dom": "^17.0.2",
+    "remix-domains": "^0.0.1-rc.10",
+    "zod": "^3.14.4"
   },
   "devDependencies": {
     "@remix-run/dev": "1.3.5",
