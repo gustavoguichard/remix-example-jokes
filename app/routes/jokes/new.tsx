@@ -13,6 +13,7 @@ import { inputFromForm } from "remix-domains";
 import { JokeDisplay } from "~/components/joke";
 import { createJoke, jokeSchema } from "~/domains/jokes";
 import { enforceUser } from "~/domains/user";
+import { errorByName } from "~/utils/helpers";
 import { getUserId } from "~/utils/session.server";
 
 export const loader: LoaderFunction = async ({ request }) => {
@@ -22,9 +23,6 @@ export const loader: LoaderFunction = async ({ request }) => {
   }
   return json<UnpackData<typeof enforceUser>>(result.data);
 };
-
-const errorByName = (data: ErrorResult | undefined, name: string) =>
-  data?.inputErrors.find(({ path }) => path.includes(name));
 
 type ActionData = ErrorResult & {
   fields: {

@@ -13,6 +13,7 @@ import { inputFromUrl } from "remix-domains";
 import { formatErrors } from "remix-domains";
 import { inputFromForm } from "remix-domains";
 import { login, register } from "~/domains/user";
+import { errorByName } from "~/utils/helpers";
 
 export const meta: MetaFunction = () => {
   return {
@@ -24,9 +25,6 @@ export const meta: MetaFunction = () => {
 export const links: LinksFunction = () => {
   return [{ rel: "stylesheet", href: stylesUrl }];
 };
-
-const errorByName = (data: ErrorResult | undefined, name: string) =>
-  data?.inputErrors.find(({ path }) => path.includes(name));
 
 type ActionData = ErrorResult & {
   fields?: { loginType: string; username: string; password: string };
