@@ -26,15 +26,18 @@ export const loader: LoaderFunction = async ({ request }) => {
 const errorByName = (data: ErrorResult | undefined, name: string) =>
   data?.inputErrors.find(({ path }) => path.includes(name));
 
-type ActionData = ErrorResult;
+type ActionData = ErrorResult & {
+  fields: {
+    name: string;
+    content: string;
+  };
+};
 const badRequest = (data: ActionData) => json(data, { status: 400 });
 export const action: ActionFunction = async ({ request }) => {
-  const result = await createJoke(
-    await inputFromForm(request),
-    await getUserId(request)
-  );
+  const fields = await inputFromForm(request);
+  const result = await createJoke(fields, await getUserId(request));
   if (!result.success) {
-    return badRequest(result);
+    return badRequest({ ...result, fields });
   }
   return redirect(`/jokes/${result.data.id}?redirectTo=/jokes/new`);
 };
@@ -44,7 +47,7 @@ export default function NewJokeRoute() {
   const transition = useTransition();
 
   if (transition.submission?.formData) {
-    const joke = Object.fromEntries(transition.submission.formData); // TODO
+    const joke = Object.fromEntries(transition.submission.formData);
     if (jokeSchema.safeParse(joke).success) {
       return (
         <JokeDisplay
@@ -65,7 +68,7 @@ export default function NewJokeRoute() {
             Name:{" "}
             <input
               type="text"
-              // defaultValue={actionData?.fields?.name} // TODO
+              defaultValue={actionData?.fields.name}
               name="name"
               aria-invalid={Boolean(errorByName(actionData, "name"))}
               aria-errormessage={
@@ -83,7 +86,7 @@ export default function NewJokeRoute() {
           <label>
             Content:{" "}
             <textarea
-              // defaultValue={actionData?.fields?.content}
+              defaultValue={actionData?.fields.content}
               name="content"
               aria-invalid={Boolean(errorByName(actionData, "content"))}
               aria-errormessage={
