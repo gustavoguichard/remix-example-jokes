@@ -3,13 +3,14 @@ import { json } from "@remix-run/node";
 import { Form, Link, Outlet, useLoaderData } from "@remix-run/react";
 import type { UnpackResult } from "remix-domains";
 import { listUserJokes } from "~/domains/jokes";
+import { getUserId, logout } from "~/utils/session.server";
 
-import { getUser } from "~/utils/session.server";
 import stylesUrl from "../styles/jokes.css";
 
 type LoaderData = UnpackResult<typeof listUserJokes>;
 export const loader: LoaderFunction = async ({ request }) => {
-  const result = await listUserJokes(null, await getUser(request));
+  const result = await listUserJokes(null, await getUserId(request));
+  if (result.errors.length) throw logout(request);
   return json<LoaderData>(result);
 };
 

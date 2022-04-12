@@ -19,16 +19,19 @@ const findRSSJokes = makeDomainFunction(
 
 const listUserJokes = makeDomainFunction(
   z.any(),
-  z.object({ username: z.string().nonempty(), id: z.string().nonempty() })
-)(async (_i, user) => {
-  const jokes = await db.joke.findMany({
+  userIdSchema
+)(async (_i, id) => ({
+  user: await db.user.findUnique({
+    where: { id },
+    select: { id: true, username: true },
+  }),
+  jokes: await db.joke.findMany({
     take: 5,
     select: { id: true, name: true },
-    where: { jokesterId: user.id },
+    where: { jokesterId: id },
     orderBy: { createdAt: "desc" },
-  });
-  return { jokes, user };
-});
+  }),
+}));
 
 const jokeSchema = z.object({
   name: z.string().min(2, `That joke's name is too short`),
