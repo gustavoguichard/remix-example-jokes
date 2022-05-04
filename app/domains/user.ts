@@ -8,6 +8,10 @@ const enforceUser = makeDomainFunction(z.object({ id: z.string().nonempty() }))(
 );
 
 const registrationSchema = z.object({
+  loginType: z.preprocess(
+    (val) => val ?? "login",
+    z.enum(["login", "register"])
+  ),
   username: z.string().min(3, "Usernames must be at least 3 characters long"),
   password: z.string().min(6, "Passwords must be at least 6 characters long"),
   redirectTo: z
@@ -17,10 +21,6 @@ const registrationSchema = z.object({
     .refine((val = "/jokes") => {
       return ["/jokes", "/", "https://remix.run"].includes(val);
     }),
-  loginType: z.preprocess(
-    (val) => val ?? "login",
-    z.enum(["login", "register"])
-  ),
 });
 
 const signInSignUp = makeDomainFunction(registrationSchema)(
@@ -48,3 +48,4 @@ const signInSignUp = makeDomainFunction(registrationSchema)(
 );
 
 export { signInSignUp, enforceUser };
+export { registrationSchema };

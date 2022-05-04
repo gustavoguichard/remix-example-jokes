@@ -18,6 +18,7 @@
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
     "remix-domains": "^0.2.0",
+    "remix-forms": "^0.13.1",
     "zod": "^3.14.4"
   },
   "devDependencies": {

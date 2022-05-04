@@ -4,14 +4,13 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Form, Link, useActionData } from "@remix-run/react";
+import { Link, useActionData, useLocation } from "@remix-run/react";
 
 import { createUserSession } from "~/utils/session.server";
 import stylesUrl from "../styles/login.css";
-import type { ErrorResult } from "remix-domains";
-import { inputFromForm } from "remix-domains";
-import { signInSignUp } from "~/domains/user";
-import { fieldFirstMessage, fieldHasErrors } from "~/utils/helpers";
+import { registrationSchema, signInSignUp } from "~/domains/user";
+import Form from "~/components/form";
+import { performMutation } from "remix-forms";
 
 export const meta: MetaFunction = () => {
   return {
@@ -24,107 +23,68 @@ export const links: LinksFunction = () => {
   return [{ rel: "stylesheet", href: stylesUrl }];
 };
 
-type ActionData = ErrorResult & {
-  fields?: { loginType: string; username: string; password: string };
-};
-const badRequest = (data: ActionData) => json(data, { status: 400 });
 export const action: ActionFunction = async ({ request }) => {
-  const fields = await inputFromForm(request);
-  const result = await signInSignUp(fields);
-  if (!result.success) return badRequest({ ...result, fields });
+  const result = await performMutation({
+    request,
+    schema: registrationSchema,
+    mutation: signInSignUp,
+  });
+  if (!result.success) return json(result, { status: 400 });
 
-  return createUserSession(result.data.id, result.data.redirectTo);
+  return createUserSession(result.data.id, result.data.redirectTo!);
 };
 
 export default function Login() {
-  const actionData = useActionData<ActionData>();
+  const actionData = useActionData();
+  const location = useLocation();
+  const qs = new URLSearchParams(location.search);
   return (
     <div className="container">
       <div className="content" data-light="">
         <h1>Login</h1>
-        <Form method="post">
-          <fieldset>
-            <legend className="sr-only">Login or Register?</legend>
-            <label>
-              <input
-                type="radio"
-                name="loginType"
-                value="login"
-                defaultChecked={
-                  !actionData?.fields?.loginType ||
-                  actionData?.fields?.loginType === "login"
-                }
-              />{" "}
-              Login
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="loginType"
-                value="register"
-                defaultChecked={actionData?.fields?.loginType === "register"}
-              />{" "}
-              Register
-            </label>
-          </fieldset>
-          <div>
-            <label htmlFor="username-input">Username</label>
-            <input
-              type="text"
-              id="username-input"
-              name="username"
-              defaultValue={actionData?.fields?.username}
-              aria-invalid={fieldHasErrors(actionData, "username")}
-              aria-errormessage={
-                fieldHasErrors(actionData, "username")
-                  ? "username-error"
-                  : undefined
-              }
-            />
-            {fieldHasErrors(actionData, "username") ? (
-              <p
-                className="form-validation-error"
-                role="alert"
-                id="username-error"
-              >
-                {fieldFirstMessage(actionData, "username")}
-              </p>
-            ) : null}
-          </div>
-          <div>
-            <label htmlFor="password-input">Password</label>
-            <input
-              id="password-input"
-              name="password"
-              defaultValue={actionData?.fields?.password}
-              type="password"
-              aria-invalid={fieldHasErrors(actionData, "password")}
-              aria-errormessage={
-                fieldHasErrors(actionData, "password")
-                  ? "password-error"
-                  : undefined
-              }
-            />
-            {fieldHasErrors(actionData, "password") ? (
-              <p
-                className="form-validation-error"
-                role="alert"
-                id="password-error"
-              >
-                {fieldFirstMessage(actionData, "password")}
-              </p>
-            ) : null}
-          </div>
-          <div id="form-error-message">
-            {actionData?.errors.length ? (
-              <p className="form-validation-error" role="alert">
-                {actionData.errors.map(({ message }) => message).join(", ")}
-              </p>
-            ) : null}
-          </div>
-          <button type="submit" className="button">
-            Submit
-          </button>
+        <Form schema={registrationSchema}>
+          {({ Field, Errors, Button }) => (
+            <>
+              <Field name="redirectTo" hidden value={qs.get("redirectTo")} />
+              <Field name="loginType">
+                {({ Errors }) => (
+                  <fieldset>
+                    <legend className="sr-only">Login or Register?</legend>
+                    <label>
+                      <input
+                        type="radio"
+                        id="loginTypeLogin"
+                        name="loginType"
+                        value="login"
+                        defaultChecked={
+                          !actionData?.fields?.loginType ||
+                          actionData?.fields?.loginType === "login"
+                        }
+                      />{" "}
+                      Login
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        id="loginTypeRegister"
+                        name="loginType"
+                        value="register"
+                        defaultChecked={
+                          actionData?.fields?.loginType === "register"
+                        }
+                      />{" "}
+                      Register
+                    </label>
+                    <Errors />
+                  </fieldset>
+                )}
+              </Field>
+              <Field name="username" />
+              <Field name="password" type="password" />
+              <Errors />
+              <Button>Submit</Button>
+            </>
+          )}
         </Form>
       </div>
       <div className="links">
