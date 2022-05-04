@@ -9,7 +9,7 @@ import { createJoke, jokeSchema } from "~/domains/jokes";
 import { enforceUser } from "~/domains/user";
 import { getUserId } from "~/utils/session.server";
 import Form from "~/components/form";
-import { performMutation } from "remix-forms";
+import { formAction } from "remix-forms";
 
 export const loader: LoaderFunction = async ({ request }) => {
   const result = await enforceUser({ id: await getUserId(request) });
@@ -19,15 +19,13 @@ export const loader: LoaderFunction = async ({ request }) => {
   return json<UnpackData<typeof enforceUser>>(result.data);
 };
 
-export const action: ActionFunction = async ({ request }) => {
-  const result = await performMutation({
+export const action: ActionFunction = async ({ request }) =>
+  formAction({
     request,
     schema: jokeSchema,
     mutation: createJoke,
+    successPath: ({ id }) => `/jokes/${id}?redirectTo=/jokes/new`,
   });
-  if (!result.success) return json(result, { status: 400 });
-  return redirect(`/jokes/${result.data.id}?redirectTo=/jokes/new`);
-};
 
 export default function NewJokeRoute() {
   const transition = useTransition();
@@ -42,11 +40,12 @@ export default function NewJokeRoute() {
   return (
     <div>
       <p>Add your own hilarious joke</p>
-      <Form schema={jokeSchema} multiline={["content"]}>
+      <Form schema={jokeSchema}>
         {({ Field, Errors, Button }) => (
           <>
             <Field name="name" label="Name:" />
-            <Field name="content" label="Content:" />
+            <Field name="content" label="Content:" multiline />
+            <Errors />
             <div>
               <Button>Add</Button>
             </div>

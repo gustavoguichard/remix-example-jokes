@@ -4,13 +4,13 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Link, useActionData } from "@remix-run/react";
+import { Link, useActionData, useLocation } from "@remix-run/react";
 
 import { createUserSession } from "~/utils/session.server";
 import stylesUrl from "../styles/login.css";
 import { registrationSchema, signInSignUp } from "~/domains/user";
 import Form from "~/components/form";
-import { PerformMutation, performMutation } from "remix-forms";
+import { performMutation } from "remix-forms";
 
 export const meta: MetaFunction = () => {
   return {
@@ -31,19 +31,21 @@ export const action: ActionFunction = async ({ request }) => {
   });
   if (!result.success) return json(result, { status: 400 });
 
-  return createUserSession(result.data.id, result.data.redirectTo);
+  return createUserSession(result.data.id, result.data.redirectTo!);
 };
 
 export default function Login() {
   const actionData = useActionData();
-  console.log(actionData);
+  const location = useLocation();
+  const qs = new URLSearchParams(location.search);
   return (
     <div className="container">
       <div className="content" data-light="">
         <h1>Login</h1>
-        <Form schema={registrationSchema} hiddenFields={["redirectTo"]}>
+        <Form schema={registrationSchema}>
           {({ Field, Errors, Button }) => (
             <>
+              <Field name="redirectTo" hidden value={qs.get("redirectTo")} />
               <Field name="loginType">
                 {({ Errors }) => (
                   <fieldset>
@@ -51,6 +53,7 @@ export default function Login() {
                     <label>
                       <input
                         type="radio"
+                        id="loginTypeLogin"
                         name="loginType"
                         value="login"
                         defaultChecked={
@@ -63,6 +66,7 @@ export default function Login() {
                     <label>
                       <input
                         type="radio"
+                        id="loginTypeRegister"
                         name="loginType"
                         value="register"
                         defaultChecked={
@@ -76,15 +80,7 @@ export default function Login() {
                 )}
               </Field>
               <Field name="username" />
-              <Field name="password">
-                {({ Label, SmartInput, Errors }) => (
-                  <>
-                    <Label />
-                    <SmartInput type="password" />
-                    <Errors />
-                  </>
-                )}
-              </Field>
+              <Field name="password" type="password" />
               <Errors />
               <Button>Submit</Button>
             </>

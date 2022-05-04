@@ -5264,10 +5264,10 @@ remix-domains@^0.2.0:
   dependencies:
     qs "^6.10.3"
 
-remix-forms@^0.12.0:
-  version "0.12.0"
-  resolved "https://registry.yarnpkg.com/remix-forms/-/remix-forms-0.12.0.tgz#8b9a1d4c856f1ea066049e44c07bb154f3786af9"
-  integrity sha512-q5ziKUI5Elj/I80hB4MVKd6rslUxCkbRY+lx/oqBuea0YNGydM1HS2H3ZcmJB8dILTyT1JM17bip+IAN3YbWGg==
+remix-forms@^0.13.1:
+  version "0.13.1"
+  resolved "https://registry.yarnpkg.com/remix-forms/-/remix-forms-0.13.1.tgz#006ffe196d8917f65463d5e15a1872d78729da87"
+  integrity sha512-fmARGx3UhfPflfgwEJ60tIJ6ZCBxRnNiU3Y5/kk0F3Aws8cDzQ+neQv2K3QIXdTuHs3Z58VZkbLDHoF7IGlCng==
   dependencies:
     "@hookform/resolvers" "^2.8.8"
     lodash "^4.17.21"
