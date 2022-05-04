@@ -1,21 +1,15 @@
 import type { ActionFunction, LoaderFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  useActionData,
-  useCatch,
-  useTransition,
-} from "@remix-run/react";
-import type { ErrorResult, UnpackData } from "remix-domains";
+import { Link, useCatch, useTransition } from "@remix-run/react";
+import type { UnpackData } from "remix-domains";
 import { inputFromFormData } from "remix-domains";
-import { inputFromForm } from "remix-domains";
 
 import { JokeDisplay } from "~/components/joke";
 import { createJoke, jokeSchema } from "~/domains/jokes";
 import { enforceUser } from "~/domains/user";
 import { getUserId } from "~/utils/session.server";
-import { fieldHasErrors, fieldFirstMessage } from "~/utils/helpers";
+import Form from "~/components/form";
+import { performMutation } from "remix-forms";
 
 export const loader: LoaderFunction = async ({ request }) => {
   const result = await enforceUser({ id: await getUserId(request) });
@@ -25,24 +19,17 @@ export const loader: LoaderFunction = async ({ request }) => {
   return json<UnpackData<typeof enforceUser>>(result.data);
 };
 
-type ActionData = ErrorResult & {
-  fields: {
-    name: string;
-    content: string;
-  };
-};
-const badRequest = (data: ActionData) => json(data, { status: 400 });
 export const action: ActionFunction = async ({ request }) => {
-  const fields = await inputFromForm(request);
-  const result = await createJoke(fields, await getUserId(request));
-  if (!result.success) {
-    return badRequest({ ...result, fields });
-  }
+  const result = await performMutation({
+    request,
+    schema: jokeSchema,
+    mutation: createJoke,
+  });
+  if (!result.success) return json(result, { status: 400 });
   return redirect(`/jokes/${result.data.id}?redirectTo=/jokes/new`);
 };
 
 export default function NewJokeRoute() {
-  const actionData = useActionData<ActionData>();
   const transition = useTransition();
 
   if (transition.submission?.formData) {
@@ -55,60 +42,16 @@ export default function NewJokeRoute() {
   return (
     <div>
       <p>Add your own hilarious joke</p>
-      <Form method="post">
-        <div>
-          <label>
-            Name:{" "}
-            <input
-              type="text"
-              defaultValue={actionData?.fields.name}
-              name="name"
-              aria-invalid={fieldHasErrors(actionData, "name")}
-              aria-errormessage={
-                fieldHasErrors(actionData, "name") ? "name-error" : undefined
-              }
-            />
-          </label>
-          {fieldHasErrors(actionData, "name") ? (
-            <p className="form-validation-error" role="alert" id="name-error">
-              {fieldFirstMessage(actionData, "name")}
-            </p>
-          ) : null}
-        </div>
-        <div>
-          <label>
-            Content:{" "}
-            <textarea
-              defaultValue={actionData?.fields.content}
-              name="content"
-              aria-invalid={fieldHasErrors(actionData, "content")}
-              aria-errormessage={
-                fieldHasErrors(actionData, "content")
-                  ? "content-error"
-                  : undefined
-              }
-            />
-          </label>
-          {fieldHasErrors(actionData, "content") ? (
-            <p
-              className="form-validation-error"
-              role="alert"
-              id="content-error"
-            >
-              {fieldFirstMessage(actionData, "content")}
-            </p>
-          ) : null}
-        </div>
-        <div>
-          {actionData?.errors.length ? (
-            <p className="form-validation-error" role="alert">
-              {actionData.errors.map(({ message }) => message).join(", ")}
-            </p>
-          ) : null}
-          <button type="submit" className="button">
-            Add
-          </button>
-        </div>
+      <Form schema={jokeSchema} multiline={["content"]}>
+        {({ Field, Errors, Button }) => (
+          <>
+            <Field name="name" label="Name:" />
+            <Field name="content" label="Content:" />
+            <div>
+              <Button>Add</Button>
+            </div>
+          </>
+        )}
       </Form>
     </div>
   );
