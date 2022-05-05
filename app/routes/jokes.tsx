@@ -1,36 +1,18 @@
 import type { LinksFunction, LoaderFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Form, Link, Outlet, useLoaderData } from "@remix-run/react";
+import type { UnpackResult } from "remix-domains";
+import { listUserJokes } from "~/domains/jokes";
+import { getUserId, logout } from "~/utils/session.server";
 
-import { db } from "~/utils/db.server";
-import { getUser } from "~/utils/session.server";
 import stylesUrl from "../styles/jokes.css";
 
-type LoaderData = {
-  user: Awaited<ReturnType<typeof getUser>>;
-  jokeListItems: Array<{ id: string; name: string }>;
-};
-
+type LoaderData = UnpackResult<typeof listUserJokes>;
 export const loader: LoaderFunction = async ({ request }) => {
-  const user = await getUser(request);
+  const result = await listUserJokes(null, await getUserId(request));
+  if (result.errors.length) throw logout(request);
 
-  // in the official deployed version of the app, we don't want to deploy
-  // a site with unmoderated content, so we only show users their own jokes
-  const jokeListItems = user
-    ? await db.joke.findMany({
-        take: 5,
-        select: { id: true, name: true },
-        where: { jokesterId: user.id },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
-
-  const data: LoaderData = {
-    jokeListItems,
-    user,
-  };
-
-  return json(data);
+  return json<LoaderData>(result);
 };
 
 export const links: LinksFunction = () => {
@@ -38,7 +20,9 @@ export const links: LinksFunction = () => {
 };
 
 export default function JokesScreen() {
-  const data = useLoaderData<LoaderData>();
+  const result = useLoaderData<LoaderData>();
+  const user = result.success ? result.data.user : null;
+  const jokes = result.success ? result.data.jokes : [];
 
   return (
     <div className="jokes-layout">
@@ -50,9 +34,9 @@ export default function JokesScreen() {
               <span className="logo-medium">J🤪KES</span>
             </Link>
           </h1>
-          {data.user ? (
+          {user ? (
             <div className="user-info">
-              <span>{`Hi ${data.user.username}`}</span>
+              <span>{`Hi ${user.username}`}</span>
               <Form action="/logout" method="post">
                 <button type="submit" className="button">
                   Logout
@@ -67,12 +51,12 @@ export default function JokesScreen() {
       <main className="jokes-main">
         <div className="container">
           <div className="jokes-list">
-            {data.jokeListItems.length ? (
+            {jokes.length ? (
               <>
                 <Link to=".">Get a random joke</Link>
                 <p>Here are a few more jokes to check out:</p>
                 <ul>
-                  {data.jokeListItems.map(({ id, name }) => (
+                  {jokes.map(({ id, name }) => (
                     <li key={id}>
                       <Link to={id} prefetch="intent">
                         {name}
