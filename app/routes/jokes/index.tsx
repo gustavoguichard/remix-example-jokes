@@ -1,34 +1,18 @@
-import type { Joke } from "@prisma/client";
 import type { LoaderFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Link, useCatch, useLoaderData } from "@remix-run/react";
+import type { UnpackData } from "remix-domains";
+import { getRandomJoke } from "~/domains/jokes.server";
 
-import { db } from "~/utils/db.server";
 import { getUserId } from "~/utils/session.server";
 
-type LoaderData = { randomJoke: Joke };
-
+type LoaderData = UnpackData<typeof getRandomJoke>;
 export const loader: LoaderFunction = async ({ request }) => {
-  const userId = await getUserId(request);
-  const count = await db.joke.count();
-  const randomRowNumber = Math.floor(Math.random() * count);
-
-  // in the official deployed version of the app, we don't want to deploy
-  // a site with unmoderated content, so we only show users their own jokes
-  const [randomJoke] = userId
-    ? await db.joke.findMany({
-        take: 1,
-        skip: randomRowNumber,
-        where: {
-          jokesterId: userId,
-        },
-      })
-    : [];
-  if (!randomJoke) {
+  const result = await getRandomJoke(null, await getUserId(request));
+  if (!result.success) {
     throw new Response("No jokes to be found!", { status: 404 });
   }
-  const data: LoaderData = { randomJoke };
-  return json(data);
+  return json<LoaderData>(result.data);
 };
 
 export default function JokesIndexRoute() {
@@ -37,8 +21,8 @@ export default function JokesIndexRoute() {
   return (
     <div>
       <p>Here's a random joke:</p>
-      <p>{data.randomJoke.content}</p>
-      <Link to={data.randomJoke.id}>"{data.randomJoke.name}" Permalink</Link>
+      <p>{data.content}</p>
+      <Link to={data.id}>"{data.name}" Permalink</Link>
     </div>
   );
 }
