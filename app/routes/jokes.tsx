@@ -1,26 +1,24 @@
-import type { LinksFunction, LoaderFunction } from "@remix-run/node";
+import type { LinksFunction, LoaderArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Form, Link, Outlet, useLoaderData } from "@remix-run/react";
-import type { UnpackResult } from "remix-domains";
 import { listUserJokes } from "~/domains/jokes.server";
 import { getUserId, logout } from "~/utils/session.server";
 
 import stylesUrl from "../styles/jokes.css";
 
-type LoaderData = UnpackResult<typeof listUserJokes>;
-export const loader: LoaderFunction = async ({ request }) => {
+export async function loader({ request }: LoaderArgs) {
   const result = await listUserJokes(null, await getUserId(request));
   if (result.errors.length) throw logout(request);
 
-  return json<LoaderData>(result);
-};
+  return json(result);
+}
 
 export const links: LinksFunction = () => {
   return [{ rel: "stylesheet", href: stylesUrl }];
 };
 
 export default function JokesScreen() {
-  const result = useLoaderData<LoaderData>();
+  const result = useLoaderData<typeof loader>();
   const user = result.success ? result.data.user : null;
   const jokes = result.success ? result.data.jokes : [];
 

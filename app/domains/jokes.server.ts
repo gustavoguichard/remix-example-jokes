@@ -2,10 +2,10 @@ import { makeDomainFunction } from "remix-domains";
 import { z } from "zod";
 import { db } from "~/utils/db.server";
 
-const userIdSchema = z.string().nonempty();
+const userIdSchema = z.string().min(1);
 const findRSSJokes = makeDomainFunction(
   z.null(),
-  z.object({ host: z.string().nonempty() })
+  z.object({ host: z.string().min(1) })
 )(async (_i, { host }) => {
   const protocol = host.includes("localhost") ? "http" : "https";
   const domain = `${protocol}://${host}`;
@@ -57,7 +57,7 @@ const getRandomJoke = makeDomainFunction(
 });
 
 const getJoke = makeDomainFunction(
-  z.object({ jokeId: z.string().nonempty() }),
+  z.object({ jokeId: z.string().min(1) }),
   userIdSchema
 )(async ({ jokeId }, jokesterId) => {
   const joke = await db.joke.findUnique({ where: { id: jokeId } });
@@ -67,7 +67,7 @@ const getJoke = makeDomainFunction(
 
 const deleteJoke = makeDomainFunction(
   z.object({ _method: z.literal("delete") }),
-  z.object({ jokesterId: userIdSchema, jokeId: z.string().nonempty() })
+  z.object({ jokesterId: userIdSchema, jokeId: z.string().min(1) })
 )(async (_i, { jokeId, jokesterId }) => {
   const joke = await db.joke.findUnique({
     where: { id: jokeId },

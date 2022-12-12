@@ -1,22 +1,13 @@
-import type {
-  ActionFunction,
-  LoaderFunction,
-  MetaFunction,
-} from "@remix-run/node";
+import type { ActionArgs, LoaderArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useCatch, useLoaderData, useParams } from "@remix-run/react";
 
 import { getUserId, requireUserId } from "~/utils/session.server";
 import { JokeDisplay } from "~/components/joke";
 import { deleteJoke, getJoke } from "~/domains/jokes.server";
-import type { UnpackData } from "remix-domains";
 import { inputFromForm } from "remix-domains";
 
-export const meta: MetaFunction = ({
-  data,
-}: {
-  data: LoaderData | undefined;
-}) => {
+export const meta: MetaFunction = ({ data }) => {
   if (!data) {
     return {
       title: "No joke",
@@ -29,15 +20,14 @@ export const meta: MetaFunction = ({
   };
 };
 
-type LoaderData = UnpackData<typeof getJoke>;
-export const loader: LoaderFunction = async ({ request, params }) => {
+export async function loader({ request, params }: LoaderArgs) {
   const result = await getJoke(params, await getUserId(request));
   if (!result.success) throw new Response("Not found", { status: 404 });
 
-  return json<LoaderData>(result.data);
-};
+  return json(result.data);
+}
 
-export const action: ActionFunction = async ({ request, params }) => {
+export async function action({ request, params }: ActionArgs) {
   const result = await deleteJoke(await inputFromForm(request), {
     ...params,
     jokesterId: await requireUserId(request),
@@ -45,10 +35,10 @@ export const action: ActionFunction = async ({ request, params }) => {
   if (!result.success) throw new Response("Bad request", { status: 400 });
 
   return redirect("/jokes");
-};
+}
 
 export default function JokeRoute() {
-  const data = useLoaderData<LoaderData>();
+  const data = useLoaderData<typeof loader>();
   return <JokeDisplay joke={data.joke} isOwner={data.isOwner} />;
 }
 

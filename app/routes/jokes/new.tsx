@@ -1,4 +1,4 @@
-import type { ActionFunction, LoaderFunction } from "@remix-run/node";
+import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import {
   Form,
@@ -7,7 +7,6 @@ import {
   useCatch,
   useTransition,
 } from "@remix-run/react";
-import type { ErrorResult, UnpackData } from "remix-domains";
 import { inputFromFormData } from "remix-domains";
 import { inputFromForm } from "remix-domains";
 
@@ -17,32 +16,25 @@ import { enforceUser } from "~/domains/user.server";
 import { getUserId } from "~/utils/session.server";
 import { fieldHasErrors, fieldFirstMessage } from "~/utils/helpers";
 
-export const loader: LoaderFunction = async ({ request }) => {
+export async function loader({ request }: LoaderArgs) {
   const result = await enforceUser({ id: await getUserId(request) });
   if (!result.success) {
     throw new Response("Unauthorized", { status: 401 });
   }
-  return json<UnpackData<typeof enforceUser>>(result.data);
-};
+  return json(result.data);
+}
 
-type ActionData = ErrorResult & {
-  fields: {
-    name: string;
-    content: string;
-  };
-};
-const badRequest = (data: ActionData) => json(data, { status: 400 });
-export const action: ActionFunction = async ({ request }) => {
+export async function action({ request }: ActionArgs) {
   const fields = await inputFromForm(request);
   const result = await createJoke(fields, await getUserId(request));
   if (!result.success) {
-    return badRequest({ ...result, fields });
+    return json({ ...result, fields }, { status: 400 });
   }
   return redirect(`/jokes/${result.data.id}?redirectTo=/jokes/new`);
-};
+}
 
 export default function NewJokeRoute() {
-  const actionData = useActionData<ActionData>();
+  const actionData = useActionData<typeof action>();
   const transition = useTransition();
 
   if (transition.submission?.formData) {

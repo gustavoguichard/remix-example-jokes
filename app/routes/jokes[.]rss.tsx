@@ -1,7 +1,7 @@
-import type { LoaderFunction } from "@remix-run/node";
+import type { LoaderArgs } from "@remix-run/node";
 import { findRSSJokes } from "~/domains/jokes.server";
 
-export const loader: LoaderFunction = async ({ request: { headers } }) => {
+export async function loader({ request: { headers } }: LoaderArgs) {
   const result = await findRSSJokes(null, {
     host: headers.get("X-Forwarded-Host") ?? headers.get("host"),
   });
@@ -42,4 +42,4 @@ export const loader: LoaderFunction = async ({ request: { headers } }) => {
       "Content-Length": String(Buffer.byteLength(rssString)),
     },
   });
-};
+}

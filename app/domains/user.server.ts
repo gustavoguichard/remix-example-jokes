@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "~/utils/db.server";
 import bcrypt from "bcryptjs";
 
-const enforceUser = makeDomainFunction(z.object({ id: z.string().nonempty() }))(
+const enforceUser = makeDomainFunction(z.object({ id: z.string().min(1) }))(
   async () => ({})
 );
 

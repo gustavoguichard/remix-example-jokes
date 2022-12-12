@@ -1,22 +1,20 @@
-import type { LoaderFunction } from "@remix-run/node";
+import type { LoaderArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Link, useCatch, useLoaderData } from "@remix-run/react";
-import type { UnpackData } from "remix-domains";
 import { getRandomJoke } from "~/domains/jokes.server";
 
 import { getUserId } from "~/utils/session.server";
 
-type LoaderData = UnpackData<typeof getRandomJoke>;
-export const loader: LoaderFunction = async ({ request }) => {
+export async function loader({ request }: LoaderArgs) {
   const result = await getRandomJoke(null, await getUserId(request));
   if (!result.success) {
     throw new Response("No jokes to be found!", { status: 404 });
   }
-  return json<LoaderData>(result.data);
-};
+  return json(result.data);
+}
 
 export default function JokesIndexRoute() {
-  const data = useLoaderData<LoaderData>();
+  const data = useLoaderData<typeof loader>();
 
   return (
     <div>

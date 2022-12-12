@@ -1,14 +1,9 @@
-import type {
-  ActionFunction,
-  LinksFunction,
-  MetaFunction,
-} from "@remix-run/node";
+import type { ActionArgs, LinksFunction, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Form, Link, useActionData } from "@remix-run/react";
 
 import { createUserSession } from "~/utils/session.server";
 import stylesUrl from "../styles/login.css";
-import type { ErrorResult } from "remix-domains";
 import { inputFromForm } from "remix-domains";
 import { signInSignUp } from "~/domains/user.server";
 import { fieldFirstMessage, fieldHasErrors } from "~/utils/helpers";
@@ -24,20 +19,16 @@ export const links: LinksFunction = () => {
   return [{ rel: "stylesheet", href: stylesUrl }];
 };
 
-type ActionData = ErrorResult & {
-  fields?: { loginType: string; username: string; password: string };
-};
-const badRequest = (data: ActionData) => json(data, { status: 400 });
-export const action: ActionFunction = async ({ request }) => {
+export async function action({ request }: ActionArgs) {
   const fields = await inputFromForm(request);
   const result = await signInSignUp(fields);
-  if (!result.success) return badRequest({ ...result, fields });
+  if (!result.success) return json({ ...result, fields }, { status: 400 });
 
   return createUserSession(result.data.id, result.data.redirectTo);
-};
+}
 
 export default function Login() {
-  const actionData = useActionData<ActionData>();
+  const actionData = useActionData<typeof action>();
   return (
     <div className="container">
       <div className="content" data-light="">
