@@ -1,23 +1,13 @@
-import type { LoaderFunction } from "@remix-run/node";
+import type { LoaderArgs } from "@remix-run/node";
+import { findRSSJokes } from "~/domains/jokes.server";
 
-import { db } from "~/utils/db.server";
-
-export const loader: LoaderFunction = async ({ request }) => {
-  const jokes = await db.joke.findMany({
-    take: 100,
-    orderBy: { createdAt: "desc" },
-    include: { jokester: { select: { username: true } } },
+export async function loader({ request: { headers } }: LoaderArgs) {
+  const result = await findRSSJokes(null, {
+    host: headers.get("X-Forwarded-Host") ?? headers.get("host"),
   });
+  if (!result.success) throw new Response("", { status: 503 });
 
-  const host =
-    request.headers.get("X-Forwarded-Host") ?? request.headers.get("host");
-  if (!host) {
-    throw new Error("Could not determine domain URL.");
-  }
-  const protocol = host.includes("localhost") ? "http" : "https";
-  const domain = `${protocol}://${host}`;
-  const jokesUrl = `${domain}/jokes`;
-
+  const { jokes, jokesUrl } = result.data;
   const rssString = `
     <rss xmlns:blogChannel="${jokesUrl}" version="2.0">
       <channel>
@@ -52,4 +42,4 @@ export const loader: LoaderFunction = async ({ request }) => {
       "Content-Length": String(Buffer.byteLength(rssString)),
     },
   });
-};
+}

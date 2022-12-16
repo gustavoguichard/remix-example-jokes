@@ -1,21 +1,13 @@
-import type { Joke } from "@prisma/client";
-import type {
-  ActionFunction,
-  LoaderFunction,
-  MetaFunction,
-} from "@remix-run/node";
+import type { ActionArgs, LoaderArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useCatch, useLoaderData, useParams } from "@remix-run/react";
 
-import { db } from "~/utils/db.server";
 import { getUserId, requireUserId } from "~/utils/session.server";
 import { JokeDisplay } from "~/components/joke";
+import { deleteJoke, getJoke } from "~/domains/jokes.server";
+import { inputFromForm } from "remix-domains";
 
-export const meta: MetaFunction = ({
-  data,
-}: {
-  data: LoaderData | undefined;
-}) => {
+export const meta: MetaFunction = ({ data }) => {
   if (!data) {
     return {
       title: "No joke",
@@ -28,44 +20,25 @@ export const meta: MetaFunction = ({
   };
 };
 
-type LoaderData = { joke: Joke; isOwner: boolean };
+export async function loader({ request, params }: LoaderArgs) {
+  const result = await getJoke(params, await getUserId(request));
+  if (!result.success) throw new Response("Not found", { status: 404 });
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const userId = await getUserId(request);
-  const joke = await db.joke.findUnique({ where: { id: params.jokeId } });
-  if (!joke) {
-    throw new Response("What a joke! Not found.", { status: 404 });
-  }
-  const data: LoaderData = { joke, isOwner: userId === joke.jokesterId };
-  return json(data);
-};
+  return json(result.data);
+}
 
-export const action: ActionFunction = async ({ request, params }) => {
-  const form = await request.formData();
-  if (form.get("_method") !== "delete") {
-    throw new Response(`The _method ${form.get("_method")} is not supported`, {
-      status: 400,
-    });
-  }
-  const userId = await requireUserId(request);
-  const joke = await db.joke.findUnique({
-    where: { id: params.jokeId },
+export async function action({ request, params }: ActionArgs) {
+  const result = await deleteJoke(await inputFromForm(request), {
+    ...params,
+    jokesterId: await requireUserId(request),
   });
-  if (!joke) {
-    throw new Response("Can't delete what does not exist", { status: 404 });
-  }
-  if (joke.jokesterId !== userId) {
-    throw new Response("Pssh, nice try. That's not your joke", {
-      status: 401,
-    });
-  }
-  await db.joke.delete({ where: { id: params.jokeId } });
+  if (!result.success) throw new Response("Bad request", { status: 400 });
+
   return redirect("/jokes");
-};
+}
 
 export default function JokeRoute() {
-  const data = useLoaderData<LoaderData>();
-
+  const data = useLoaderData<typeof loader>();
   return <JokeDisplay joke={data.joke} isOwner={data.isOwner} />;
 }
 

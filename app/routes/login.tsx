@@ -1,14 +1,12 @@
-import type {
-  ActionFunction,
-  LinksFunction,
-  MetaFunction,
-} from "@remix-run/node";
+import type { ActionArgs, LinksFunction, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Form, Link, useActionData, useSearchParams } from "@remix-run/react";
+import { Form, Link, useActionData } from "@remix-run/react";
 
-import { login, createUserSession, register } from "~/utils/session.server";
-import { db } from "~/utils/db.server";
+import { createUserSession } from "~/utils/session.server";
 import stylesUrl from "../styles/login.css";
+import { inputFromForm } from "remix-domains";
+import { signInSignUp } from "~/domains/user.server";
+import { fieldFirstMessage, fieldHasErrors } from "~/utils/helpers";
 
 export const meta: MetaFunction = () => {
   return {
@@ -21,110 +19,21 @@ export const links: LinksFunction = () => {
   return [{ rel: "stylesheet", href: stylesUrl }];
 };
 
-function validateUsername(username: unknown) {
-  if (typeof username !== "string" || username.length < 3) {
-    return `Usernames must be at least 3 characters long`;
-  }
+export async function action({ request }: ActionArgs) {
+  const fields = await inputFromForm(request);
+  const result = await signInSignUp(fields);
+  if (!result.success) return json({ ...result, fields }, { status: 400 });
+
+  return createUserSession(result.data.id, result.data.redirectTo);
 }
-
-function validatePassword(password: unknown) {
-  if (typeof password !== "string" || password.length < 6) {
-    return `Passwords must be at least 6 characters long`;
-  }
-}
-
-function validateUrl(url: any) {
-  let urls = ["/jokes", "/", "https://remix.run"];
-  if (urls.includes(url)) {
-    return url;
-  }
-  return "/jokes";
-}
-
-type ActionData = {
-  formError?: string;
-  fieldErrors?: { username: string | undefined; password: string | undefined };
-  fields?: { loginType: string; username: string; password: string };
-};
-
-/**
- * This helper function gives us typechecking for our ActionData return
- * statements, while still returning the accurate HTTP status, 400 Bad Request,
- * to the client.
- */
-const badRequest = (data: ActionData) => json(data, { status: 400 });
-
-export const action: ActionFunction = async ({ request }) => {
-  const form = await request.formData();
-  const loginType = form.get("loginType");
-  const username = form.get("username");
-  const password = form.get("password");
-  const redirectTo = validateUrl(form.get("redirectTo") || "/jokes");
-  if (
-    typeof loginType !== "string" ||
-    typeof username !== "string" ||
-    typeof password !== "string" ||
-    typeof redirectTo !== "string"
-  ) {
-    return badRequest({ formError: `Form not submitted correctly.` });
-  }
-
-  const fields = { loginType, username, password };
-  const fieldErrors = {
-    username: validateUsername(username),
-    password: validatePassword(password),
-  };
-  if (Object.values(fieldErrors).some(Boolean)) {
-    return badRequest({ fieldErrors, fields });
-  }
-
-  switch (loginType) {
-    case "login": {
-      const user = await login({ username, password });
-      if (!user) {
-        return badRequest({
-          fields,
-          formError: `Username/Password combination is incorrect`,
-        });
-      }
-      return createUserSession(user.id, redirectTo);
-    }
-    case "register": {
-      const userExists = await db.user.findFirst({ where: { username } });
-      if (userExists) {
-        return badRequest({
-          fields,
-          formError: `User with username ${username} already exists`,
-        });
-      }
-      const user = await register({ username, password });
-      if (!user) {
-        return badRequest({
-          fields,
-          formError: `Something went wrong trying to create a new user.`,
-        });
-      }
-      return createUserSession(user.id, redirectTo);
-    }
-    default: {
-      return badRequest({ fields, formError: `Login type invalid` });
-    }
-  }
-};
 
 export default function Login() {
-  const actionData = useActionData<ActionData>();
-  const [searchParams] = useSearchParams();
+  const actionData = useActionData<typeof action>();
   return (
     <div className="container">
       <div className="content" data-light="">
         <h1>Login</h1>
         <Form method="post">
-          <input
-            type="hidden"
-            name="redirectTo"
-            value={searchParams.get("redirectTo") ?? undefined}
-          />
           <fieldset>
             <legend className="sr-only">Login or Register?</legend>
             <label>
@@ -156,18 +65,20 @@ export default function Login() {
               id="username-input"
               name="username"
               defaultValue={actionData?.fields?.username}
-              aria-invalid={Boolean(actionData?.fieldErrors?.username)}
+              aria-invalid={fieldHasErrors(actionData, "username")}
               aria-errormessage={
-                actionData?.fieldErrors?.username ? "username-error" : undefined
+                fieldHasErrors(actionData, "username")
+                  ? "username-error"
+                  : undefined
               }
             />
-            {actionData?.fieldErrors?.username ? (
+            {fieldHasErrors(actionData, "username") ? (
               <p
                 className="form-validation-error"
                 role="alert"
                 id="username-error"
               >
-                {actionData.fieldErrors.username}
+                {fieldFirstMessage(actionData, "username")}
               </p>
             ) : null}
           </div>
@@ -178,25 +89,27 @@ export default function Login() {
               name="password"
               defaultValue={actionData?.fields?.password}
               type="password"
-              aria-invalid={Boolean(actionData?.fieldErrors?.password)}
+              aria-invalid={fieldHasErrors(actionData, "password")}
               aria-errormessage={
-                actionData?.fieldErrors?.password ? "password-error" : undefined
+                fieldHasErrors(actionData, "password")
+                  ? "password-error"
+                  : undefined
               }
             />
-            {actionData?.fieldErrors?.password ? (
+            {fieldHasErrors(actionData, "password") ? (
               <p
                 className="form-validation-error"
                 role="alert"
                 id="password-error"
               >
-                {actionData.fieldErrors.password}
+                {fieldFirstMessage(actionData, "password")}
               </p>
             ) : null}
           </div>
           <div id="form-error-message">
-            {actionData?.formError ? (
+            {actionData?.errors.length ? (
               <p className="form-validation-error" role="alert">
-                {actionData.formError}
+                {actionData.errors.map(({ message }) => message).join(", ")}
               </p>
             ) : null}
           </div>
