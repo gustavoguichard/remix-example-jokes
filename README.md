@@ -63,3 +63,10 @@ npm start
 Open this example on [CodeSandbox](https://codesandbox.com):
 
 [![Open in CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/github/remix-run/remix/tree/main/examples/jokes)
+
+## Open in Codeanywhere
+You can also open this project in a browser-based IDE like Codeanywhere for development.
+
+<a href="https://app.codeanywhere.com/#https://github.com/remix-run/remix/tree/main/examples/jokes">
+  <img src="https://codeanywhere.com/img/open-in-codeanywhere-btn.svg" alt="Open in Codeanywhere" width="200">
+</a>
